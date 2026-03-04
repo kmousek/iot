@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kt.nbiot.icrm.onl.arc.npay.mapper.NpayMapper">
+    
+	<resultMap id="npayChageDtlMap" type="npayChageDtlVO">
+		<id     property="billAccNo"		column="billAccNo" /> 
+		<id     property="billTgtYm"		column="billTgtYm" />
+		<collection property="itemNpayChageVOList" ofType="itemNpayChageVO" resultMap="itemNpayChageVOMap" />
+	</resultMap>
+
+	<resultMap id="itemNpayChageVOMap" type="itemNpayChageVO">
+		<id 	property="billItemCd"	column="billItemCd" />		
+		<result property="itemNpayAmt"	column="itemNpayAmt" />
+	</resultMap>
+
+    <select id="selectNpayChageDtlByBillAccNoAndTgtContNo" parameterType="accParam" resultMap="npayChageDtlMap">
+    <![CDATA[
+        SELECT 
+			bill_acc_no			AS billAccNo
+			,bill_tgt_ym		AS billTgtYm
+			,bill_item_cd		AS billItemCd
+			,SUM(net_bill_amt)	AS itemNpayAmt
+        FROM bill_cnfm_info
+       WHERE bill_acc_no		= #{billAccNo}
+         AND tgt_cont_no		= #{tgtContNo} 
+         AND tgt_cont_div_cd	= #{tgtContDivCd} 
+         AND cpay_sttus_cd		= 'O' 
+       GROUP BY bill_acc_no, bill_tgt_ym, bill_item_cd 
+       ORDER BY bill_tgt_ym
+    ]]>
+    </select>
+
+    <select id="selectNpayChageDtlBySvcContNo" parameterType="accParam" resultMap="npayChageDtlMap">
+    <![CDATA[
+        SELECT 
+			bill_acc_no			AS billAccNo
+			,bill_tgt_ym		AS billTgtYm
+			,bill_item_cd		AS billItemCd
+			,SUM(net_bill_amt)	AS itemNpayAmt
+        FROM bill_cnfm_info
+       WHERE bill_acc_no		IN (SELECT DISTINCT bill_acc_no FROM svc_cont_bill_acc_rltn_hst WHERE svc_cont_no = #{tgtContNo})
+         AND tgt_cont_no		= #{tgtContNo} 
+         AND tgt_cont_div_cd	= #{tgtContDivCd} 
+         AND cpay_sttus_cd		= 'O' 
+       GROUP BY bill_acc_no, bill_tgt_ym, bill_item_cd 
+       ORDER BY bill_tgt_ym
+    ]]>
+    </select>
+
+    <select id="selectNpayChageDtlByBizContNo" parameterType="accParam" resultMap="npayChageDtlMap">
+    <![CDATA[
+        SELECT 
+			bill_acc_no			AS billAccNo
+			,bill_tgt_ym		AS billTgtYm
+			,bill_item_cd		AS billItemCd
+			,SUM(net_bill_amt)	AS itemNpayAmt
+        FROM bill_cnfm_info
+       WHERE bill_acc_no		IN (SELECT DISTINCT bill_acc_no FROM biz_cont_bill_acc_rltn_hst WHERE biz_cont_no = #{tgtContNo})
+         AND tgt_cont_no		= #{tgtContNo} 
+         AND tgt_cont_div_cd	= #{tgtContDivCd} 
+         AND cpay_sttus_cd		= 'O' 
+       GROUP BY bill_acc_no, bill_tgt_ym, bill_item_cd 
+       ORDER BY bill_tgt_ym
+    ]]>
+    </select>
+
+</mapper>
