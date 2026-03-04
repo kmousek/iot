@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kt.nbiot.icrm.onl.arc.adj.mapper.AdjMapper">
+    
+	<select id="selectAdjHstListByBillAccNoAndFromDt" parameterType="retvVO" resultType="adjHstVO">
+ 	    <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.PREFIX" />
+	        SELECT
+	    <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_1" />
+	                ORDER BY adj_seq desc 
+	    <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_2" />
+			<![CDATA[
+					,ai.adj_seq		AS adjSeq
+					,ai.atvy_srial_no	AS atvySrialNo
+					,CASE WHEN ai.biz_cont_no = 0 THEN ai.svc_cont_no ELSE ai.biz_cont_no END AS tgtContNo
+					,CASE WHEN ai.svc_cont_no > 0 THEN (SELECT svc_no FROM svc_no_hst WHERE ai.svc_cont_no = svc_cont_no AND efct_st_dt <= ai.cret_dt AND efct_fns_dt > ai.cret_dt) ELSE NULL END AS svcNo
+					,ai.adj_tgt_bill_tgt_ym	AS useYm
+					,TO_CHAR(ai.cret_dt, 'YYYYMMDD')	AS adjCretDate
+					,CASE WHEN ai.adj_aply_dt IS NOT NULL THEN TO_CHAR(ai.adj_aply_dt, 'YYYYMMDD') END AS adjAplyDate
+					,ai.adj_amt		AS adjAmt
+					,ai.vat_adj_amt	AS vatAdjAmt
+					,ai.adj_lvl_cd		AS adjLvlCd
+					,CASE WHEN ai.chage_seq > 0 THEN (SELECT bill_lctg_cd || bill_mctg_cd FROM chage_info WHERE chage_seq = ai.chage_seq)
+						  WHEN ai.bill_cnfm_seq > 0 THEN (SELECT bill_item_cd FROM bill_cnfm_info WHERE bill_cnfm_seq = ai.bill_cnfm_seq)
+					 END AS billItemCd
+					,ai.rsn_cd			AS rsnCd
+					,CASE WHEN (SELECT count(atvy_srial_no) from adj_info  where  bill_acc_no = ai.bill_acc_no  and  adj_seq = ai.adj_seq  AND atvy_srial_no != 1)>0 THEN 'Y' ELSE 'N' END AS adjCanYn
+					,ai.cretr_id		AS adjTrtId
+					,ai.cret_dt		AS adjTrtDt
+				FROM  adj_info ai
+	       		WHERE ai.bill_acc_no	= #{tgtNo}
+	       		AND ai.atvy_srial_no = 1 
+			]]>
+			<if test="divCd != null and divCd.equalsIgnoreCase('B')">
+			<![CDATA[
+				  AND ai.biz_cont_no	= #{subTgtNo}
+			]]>
+			</if>
+			<if test="divCd != null and divCd.equalsIgnoreCase('S')">
+			<![CDATA[
+				  AND ai.svc_cont_no	= #{subTgtNo}
+			]]>
+			</if>
+			<![CDATA[
+		 	 	  AND ai.cret_dt		>= #{fromDt}
+			   ORDER BY ai.adj_seq DESC, ai.atvy_srial_no
+			]]>
+        <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.POSTFIX" />
+	</select>
+
+	<select id="selectAdjTrtTxn" parameterType="retvVO" resultType="adjTrtTxnVO">
+	
+        <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.PREFIX" />
+            SELECT
+        <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_1" />
+                    ORDER BY adj_seq desc 
+        <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_2" />
+            
+            <![CDATA[
+					,ai.cret_dt				AS cretDt
+					,ai.amd_dt				AS amdDt
+					,ai.adj_aply_dt			AS adjAplyDt
+					,ai.bill_acc_no			AS billAccNo
+					,ai.biz_cont_no			AS bizContNo
+					,ai.svc_cont_no			AS svcContNo
+					,CASE WHEN ai.svc_cont_no > 0 THEN (SELECT svc_no FROM svc_no_hst WHERE ai.svc_cont_no = svc_cont_no AND efct_st_dt <= ai.cret_dt AND efct_fns_dt > ai.cret_dt) ELSE NULL END AS svcNo
+					,ai.adj_tgt_bill_tgt_ym	AS adjTgtBillTgtYm
+					,ci.cust_nm				AS custNm
+					,CASE WHEN ai.adj_cd = 'ADJ' THEN '조정' WHEN ai.adj_cd = 'ADJR' THEN '조정취소' END AS adjTypeNm
+					,CASE WHEN ai.chage_seq > 0 THEN (SELECT bill_lctg_cd || bill_mctg_cd FROM chage_info WHERE chage_seq = ai.chage_seq)
+						  WHEN ai.bill_cnfm_seq > 0 THEN (SELECT bill_item_cd FROM bill_cnfm_info WHERE bill_cnfm_seq = ai.bill_cnfm_seq)
+					 END AS billItemCd
+					,ai.rsn_cd				AS rsnCd
+					,ai.adj_amt				AS adjAmt
+					,ai.vat_adj_amt			AS vatAdjAmt
+					,ai.balc_impct_cd		AS blncImpctCd
+					,ai.cretr_id			AS adjTrtId
+					,ai.cmpn_cd				AS cmpnCd 
+					,ai.biz_cd				AS bizCd 
+					,ai.adj_seq				AS adjSeq 
+					,ai.adj_lvl_cd          AS adjLvlCd
+				FROM  adj_info			ai
+					  , bill_acc_info	bai	 
+					  , cust_info		ci	 
+	       		WHERE ai.cret_dt			>= #{fromDt}
+				  AND ai.cret_dt			<= #{toDt}
+				  AND ai.bill_acc_no		= bai.bill_acc_no
+				  AND bai.bill_acc_cust_no	= ci.cust_no
+			]]>
+			<if test="tgtNo != 0">
+			<![CDATA[
+				  AND ai.bill_acc_no		= #{tgtNo}
+			]]>
+			</if>
+			<if test="divCd != null and !divCd.equals('')">
+			<![CDATA[
+				  AND rsn_cd	= #{divCd}
+			]]>
+			</if>
+			<if test = "autChk != null and autChk.autChkReslt != null and autChk.autChkReslt.cmpnBizInfoList != null"> 
+				<foreach collection="autChk.autChkReslt.cmpnBizInfoList" item="cmpnBizInfo" open="AND (" close=")" separator="OR">
+					bai.cmpn_cd = #{cmpnBizInfo.cmpnCd} AND bai.biz_cd = #{cmpnBizInfo.bizCd}
+				</foreach>
+			</if>
+			<![CDATA[
+			   ORDER BY ai.cret_dt DESC
+			]]>
+			<include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.POSTFIX" />
+	</select>
+
+    <select id="selectTrunkAdjTrtTxnList" parameterType="adjTrtTxnVO" resultType="adjTrtTxnVO">
+    <![CDATA[
+        SELECT 
+			CASE WHEN ai.chage_seq > 0 THEN (SELECT bill_lctg_cd || bill_mctg_cd FROM chage_info WHERE chage_seq = ai.chage_seq)
+				 WHEN ai.bill_cnfm_seq > 0 THEN (SELECT bill_item_cd FROM bill_cnfm_info WHERE bill_cnfm_seq = ai.bill_cnfm_seq)
+			END AS billItemCd
+			,ai.adj_amt		AS adjAmt
+        FROM adj_info ai
+       WHERE ai.bill_acc_no			= #{billAccNo}
+         AND ai.adj_tgt_bill_tgt_ym	= #{adjTgtBillTgtYm} 
+         AND ai.rsn_cd					= #{rsnCd} 
+	]]>
+	<if test="svcContNo != 0">
+	<![CDATA[
+		 AND ai.svc_cont_no			= #{svcContNo}
+	]]>
+	</if>
+	<if test="bizContNo != 0">
+	<![CDATA[
+		 AND ai.biz_cont_no			= #{bizContNo}
+	]]>
+	</if>
+    </select>
+
+	<select id="selectAdjTgtChageListByBillCnfmSeq" parameterType="long" resultType="adjTgtChageVO">
+    <![CDATA[
+        SELECT
+			cdi.chage_seq						AS chageSeq
+			,cdi.prod_cd						AS prodCd
+			,cdi.chage_type_cd					AS chageTypeCd
+			,cdi.bill_amt						AS billAmt
+			,cdi.dcAmt							AS dcAmt
+			,SUM(NVL(ai.adj_amt, 0))			AS adjAmt
+			,cdi.bill_amt - NVL(cdi.dcAmt, 0) - SUM(NVL(ai.adj_amt, 0))			AS netBillAmt
+			,cdi.vat_amt - NVL(cdi.dcVatAmt, 0) - SUM(NVL(ai.vat_adj_amt, 0))	AS netVatAmt
+			,cdi.chage_imps_st_dt				AS chageImpsStDt
+			,cdi.chage_imps_fns_dt				AS chageImpsFnsDt
+			,cdi.svc_cont_no					AS svcContNo
+			,snh.svc_no							AS svcNo
+        FROM (
+                SELECT 
+					ci.bill_acc_no
+					,ci.svc_cont_no
+					,ci.chage_seq
+					,ci.prod_cd
+					,ci.chage_type_cd
+					,ci.bill_amt
+					,ci.vat_amt
+					,SUM(NVL(di.dc_amt, 0))		AS dcAmt
+					,SUM(NVL(di.dc_vat_amt, 0)) AS dcVatAmt
+					,ci.chage_imps_st_dt
+					,ci.chage_imps_fns_dt
+                FROM chage_info		ci
+					,dc_info		di
+                WHERE ci.bill_cnfm_seq		= #{billCnfmSeq}
+					AND ci.chage_aply_dt	IS NOT NULL
+					AND ci.bill_acc_no		= di.bill_acc_no(+)
+					AND ci.bill_tgt_ym		= di.bill_tgt_ym(+)
+					AND ci.chage_seq		= di.chage_seq(+)
+				GROUP BY ci.chage_seq
+				) cdi
+        		 ,adj_info ai
+        		 ,svc_no_hst snh
+        WHERE 1=1
+			AND cdi.bill_acc_no	= ai.bill_acc_no(+)
+			AND cdi.chage_seq	= ai.chage_seq(+)
+			AND cdi.svc_cont_no	= snh.svc_cont_no(+)
+			AND cdi.chage_imps_st_dt >= snh.efct_st_dt(+)
+			AND cdi.chage_imps_st_dt < snh.efct_fns_dt(+)
+        GROUP BY cdi.chage_seq, cdi.prod_cd, cdi.chage_type_cd, cdi.bill_amt, cdi.dcAmt, cdi.vat_amt, cdi.dcVatAmt, cdi.chage_imps_st_dt, cdi.chage_imps_fns_dt, cdi.svc_cont_no, snh.svc_no
+        ORDER BY decode(cdi.chage_type_cd, 'R', 1, 'U', 2, 3), cdi.chage_imps_st_dt
+    ]]>
+    </select>
+
+    <select id="selectAdjTgtContList" parameterType="long" resultType="adjTgtContVO">
+    <![CDATA[
+        SELECT 
+			bci.bill_acc_no			AS billAccNo
+			,bci.tgt_cont_no		AS tgtContNo
+			,bci.tgt_cont_div_cd	AS tgtContDivCd
+			,bci.bill_tgt_ym		AS billTgtYm
+			,SUM(bci.bill_amt - bci.dc_amt - bci.adj_amt - bci.pay_amt)	AS netBillAmt
+			,SUM(bci.vat_amt)		AS vatAmt
+        FROM bill_cnfm_info bci
+        	 , bill_item_info bii
+        	 , bill_acc_info aci
+       WHERE bci.bill_acc_no		= #{billAccNo}
+         AND bci.cpay_sttus_cd		= 'O' 
+         AND bci.bill_item_cd 		= bii.bill_item_cd
+	     AND bii.efct_fns_dt		= TO_DATE('99991231', 'YYYYMMDD')
+         AND NVL(bii.adj_posbl_yn, 'Z')		= 'Y'
+         AND aci.bill_acc_no		= bci.bill_acc_no
+         AND (aci.cmpn_cd = bii.cmpn_cd or bii.cmpn_cd = 'ALL')
+         AND (aci.biz_cd = bii.biz_cd or bii.biz_cd = 'ALL')
+       GROUP BY bci.bill_acc_no, bci.tgt_cont_no, bci.tgt_cont_div_cd, bci.bill_tgt_ym 
+       ORDER BY bci.tgt_cont_no, bci.bill_tgt_ym
+    ]]>
+    </select>
+
+</mapper>
