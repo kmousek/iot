@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kt.nbiot.icrm.onl.arc.lupin.mapper.LupinMapper">
+    
+    <select id="selectLupinApvHst" parameterType="lupinApvHstParam" resultType="lupinApvHstVO">
+    <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.PREFIX" />
+		SELECT
+	<include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_1" />
+		ORDER BY payDealNo DESC
+	<include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.MIDDLEFIX_2" />
+		, * FROM (
+    <![CDATA[
+    		SELECT
+			 ioi.ord_dt			AS ordDt
+			, ipdi.deal_sttus_cd	AS trtDivCd
+			, ipai.pay_no			AS payNo
+			, ipai.ord_no			AS ordNo
+			, ipai.cust_nm			AS custNm
+			, ipdi.pay_deal_no		AS payDealNo
+			, ipdi.pay_mthd_cd		AS payMethCd
+			, ipdi.pay_amt			AS payAmt
+			, ipdi.pay_id			AS payId
+			, ipdi.pg_aprv_no		AS pgAprvNo
+			, ipdi.card_corp_cd		AS cardCorpCd
+			, ipdi.athn_cd			AS cardApvNo
+			, ipaci.cret_dt			AS cnclRqtDt
+			, ipdi.reconcile_reslt	AS vrfResltCd
+        FROM inic_ord_info ioi
+        	 , inic_pay_apv_info ipai
+        	 , inic_pay_deal_info ipdi
+        	 , inic_pay_apv_cncl_info ipaci
+       WHERE 1 = 1 
+    ]]>
+	<if test="fromOrdDt != null">
+    <![CDATA[
+	     AND ioi.ord_dt		>= #{fromOrdDt}
+    ]]>
+	</if>
+	<if test="toOrdDt != null">
+    <![CDATA[
+	     AND ioi.ord_dt		<= #{toOrdDt}
+    ]]>
+	</if>
+	<if test="ordNo != null and !ordNo.equals('')">
+    <![CDATA[
+         AND ioi.ord_no		= #{ordNo}
+    ]]>
+	</if>
+    <![CDATA[
+         AND ioi.ord_no		= ipai.ord_no
+    ]]>
+	<if test="custNm != null and !custNm.equals('')">
+    <![CDATA[
+         AND ipai.cust_nm		= #{custNm}
+    ]]>
+	</if>
+    <![CDATA[
+         AND ipai.ord_no		= ipdi.ord_no
+         AND ipai.pay_no		= ipdi.pay_no
+         AND ipdi.ord_no		= ipaci.pay_no(+)
+    ]]>
+	<choose>																											
+	<when test='trtDivCd == "A" and vrfResltCd == "S"'>															
+    <![CDATA[
+         AND ipdi.reconcile_reslt in ('APV_VRF_SUCCESS', 'CAN_VRF_SUCCESS')
+    ]]>
+	</when>
+	<when test='trtDivCd == "A" and vrfResltCd == "L"'>
+    <![CDATA[
+         AND ipdi.reconcile_reslt in ('LUPIN_APV_ONLY', 'LUPIN_CAN_ONLY')
+    ]]>
+	</when>
+	<when test='trtDivCd == "A" and vrfResltCd == "N"'>
+    <![CDATA[
+         AND ipdi.reconcile_reslt is null
+    ]]>
+	</when>
+	<when test='trtDivCd == "P" and vrfResltCd == "A"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('S')
+    ]]>
+	</when>
+	<when test='trtDivCd == "P" and vrfResltCd == "S"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('S')
+         AND ipdi.reconcile_reslt in ('APV_VRF_SUCCESS')
+    ]]>
+	</when>
+	<when test='trtDivCd == "P" and vrfResltCd == "L"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('S')
+         AND ipdi.reconcile_reslt in ('LUPIN_APV_ONLY')
+    ]]>
+	</when>
+	<when test='trtDivCd == "P" and vrfResltCd == "N"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('S')
+         AND ipdi.reconcile_reslt IS NULL
+    ]]>
+	</when>
+	<when test='trtDivCd == "C" and vrfResltCd == "A"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('C')
+    ]]>
+	</when>
+	<when test='trtDivCd == "C" and vrfResltCd == "S"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('C')
+         AND ipdi.reconcile_reslt in ('CAN_VRF_SUCCESS')
+    ]]>
+	</when>
+	<when test='trtDivCd == "C" and vrfResltCd == "L"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('C')
+         AND ipdi.reconcile_reslt in ('LUPIN_CAN_ONLY')
+    ]]>
+	</when>
+	<when test='trtDivCd == "C" and vrfResltCd == "N"'>
+    <![CDATA[
+         AND ipdi.deal_sttus_cd in ('C')
+         AND ipdi.reconcile_reslt is null
+    ]]>
+	</when>
+	</choose>
+	 <![CDATA[
+	UNION ALL
+	SELECT
+		 null			AS ordDt
+		, ipdi.deal_sttus_cd	AS trtDivCd
+		, ipdi.pay_no		AS payNo
+		, ipdi.ord_no		AS ordNo
+		, null			AS custNm
+		, ipdi.pay_deal_no	AS payDealNo
+		, ipdi.pay_mthd_cd	AS payMethCd
+		, ipdi.pay_amt		AS payAmt
+		, ipdi.pay_id		AS payId
+		, ipdi.pg_aprv_no	AS pgAprvNo
+		, ipdi.card_corp_cd	AS cardCorpCd
+		, ipdi.athn_cd		AS cardApvNo
+		, null			AS cnclRqtDt
+		, ipdi.reconcile_reslt	AS vrfResltCd 
+	FROM inic_pay_deal_info ipdi
+	WHERE 1=1
+	AND ord_no IS NULL
+	]]>
+	<if test="fromOrdDt != null">
+    <![CDATA[
+	     AND SUBSTR(ipdi.pay_deal_no, 2, 8)	>= TO_CHAR(REPLACE(#{fromOrdDt},'-',''))
+    ]]>
+	</if>
+	<if test="toOrdDt != null">
+    <![CDATA[
+	     AND SUBSTR(ipdi.pay_deal_no, 2, 8)	<=  TO_CHAR(REPLACE(#{toOrdDt},'-',''))
+	)
+    ]]>
+    </if>
+	
+    <include refid="com.kt.nbiot.comn.dao.comn.mapper.PagingMapper.POSTFIX" />
+    </select>
+
+    <select id="selectLupinSettlSumry" parameterType="retvVO" resultType="inicPayDealInfoVO">
+    <![CDATA[
+        SELECT 
+			'S'							AS dealSttusCd
+			,ipdi.pay_amt				AS payAmt
+			,ipdi.card_corp_cd			AS cardCorpCd
+			,ipdi.reconcile_reslt		AS reconcileReslt
+        FROM inic_ord_info ioi
+        	 , inic_pay_deal_info ipdi
+       WHERE ioi.ord_dt		>= #{fromDt}
+	     AND ioi.ord_dt		<= #{toDt}
+	     AND ioi.ord_no		= ipdi.ord_no
+	     AND ipdi.reconcile_reslt IN ('APV_VRF_SUCCESS', 'CAN_VRF_SUCCESS', 'LUPIN_CAN_ONLY')
+	   UNION ALL
+        SELECT 
+			'C'							AS dealSttusCd
+			,ipdi.pay_amt				AS payAmt
+			,ipdi.card_corp_cd			AS cardCorpCd
+			,ipdi.reconcile_reslt		AS reconcileReslt
+        FROM inic_pay_apv_cncl_info ipaci
+        	 , inic_pay_deal_info ipdi
+       WHERE ipaci.cret_dt	>= #{fromDt}
+	     AND ipaci.cret_dt	<= #{toDt}
+	     AND ipaci.pay_no	= ipdi.ord_no
+	     AND ipdi.reconcile_reslt IN ('CAN_VRF_SUCCESS')
+    ]]>
+    </select>
+
+</mapper>
