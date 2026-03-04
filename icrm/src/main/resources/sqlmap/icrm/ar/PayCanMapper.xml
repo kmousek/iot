@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.kt.nbiot.icrm.onl.arc.payCan.mapper.PayCanMapper">
+    
+	<select id="selectPayCanHstListByPerd" parameterType="payCanOnlParam" resultType="payCanHstBO">
+		<![CDATA[
+			SELECT *
+			FROM (
+			 SELECT *
+			 FROM ( 
+			  SELECT
+			   COUNT(*) OVER() AS totalRow
+			   ,ROW_NUMBER(*) OVER(ORDER BY AA.payDt desc) AS currRow
+			   ,20 AS pageRowSize
+			   ,AA.*
+			     FROM ( 
+						SELECT 
+							  pi.pay_dt 		AS payDt
+							  , pi.bill_acc_no 	AS billAccNo
+							  , ci.cust_nm 		AS custNm
+							  , pi.cust_pay_dt 	AS custPayDt
+							  , pi.pay_meth_cd 	AS payMethCd
+							  , pi.pay_amt 		AS payAmt
+							  , pi.rsn_cd 		AS rsnCd
+						FROM  pay_info			pi
+							  , bill_acc_info	bai
+							  , cust_info		ci
+			       		WHERE pi.pay_cd		= 'BCK'
+				 	 	  AND pi.pay_dt		>= #{fromDt}
+				  	 	  AND pi.pay_dt 		<= #{toDt}
+				  	 	  AND pi.bill_acc_no	= bai.bill_acc_no
+				  	 	  AND bai.bill_acc_cust_no	= ci.cust_no
+		]]>
+		<if test = "autChk != null and autChk.autChkReslt != null and autChk.autChkReslt.cmpnBizInfoList != null"> 
+			<foreach collection="autChk.autChkReslt.cmpnBizInfoList" item="cmpnBizInfo" open="AND (" close=")" separator="OR">
+				bai.cmpn_cd = #{cmpnBizInfo.cmpnCd} AND bai.biz_cd = #{cmpnBizInfo.bizCd}
+			</foreach>
+		</if>
+		<![CDATA[
+					   ORDER BY pi.pay_dt DESC
+			     ) AA
+			    ) pagingtable
+			    WHERE currRow <= #{endRow}
+			)
+			WHERE currRow >= #{startRow}
+		]]>
+	</select>
+
+	<select id="selectCcardSlngCanList" parameterType="payCanOnlParam" resultType="ccardSlngCanBO">
+		<![CDATA[
+			SELECT *
+			FROM (
+			 SELECT *
+			 FROM ( 
+			  SELECT
+			   COUNT(*) OVER() AS totalRow
+			   ,ROW_NUMBER(*) OVER(ORDER BY AA.ccardCanDate desc) AS currRow
+			   ,20 AS pageRowSize
+			   ,AA.*
+			     FROM ( 
+							SELECT 
+								  tri.bill_acc_no		AS billAccNo
+								  , ci.cust_nm			AS custNm
+								  , tri.tns_cmpn_cd 	AS ccardCmpnCd
+								  , tri.pay_media_no 	AS ccardNo
+								  , tri.ccard_apv_no 	AS ccardApvNo
+								  , pi.cust_pay_dt		AS ccardApvDate
+								  , tri.tns_rqt_dt		AS ccardCanDate
+								  , tri.tns_rqt_amt 	AS canAmt
+								  , tri.amdr_id 		AS trtId
+								  , tri.amd_dt 		AS trtDt
+							FROM  tns_rqt_info		tri
+								  , bill_acc_info	bai	
+								  , cust_info		ci
+								  , pay_info		pi
+				       		WHERE tri.tns_rqt_div_cd	=  'BIC'
+					 	 	  AND tri.tns_rqt_dt		>= #{fromDt}
+					  	 	  AND tri.tns_rqt_dt 		<= #{toDt}
+						]]>
+						<if test = "divCd != null and divCd != ''">
+						<![CDATA[
+					  	 	  AND tri.tns_cmpn_cd 		= #{divCd}
+						]]>
+						</if>
+						<if test = "autChk != null and autChk.autChkReslt != null and autChk.autChkReslt.cmpnBizInfoList != null"> 
+							<foreach collection="autChk.autChkReslt.cmpnBizInfoList" item="cmpnBizInfo" open="AND (" close=")" separator="OR">
+								bai.cmpn_cd = #{cmpnBizInfo.cmpnCd} AND bai.biz_cd = #{cmpnBizInfo.bizCd}
+							</foreach>
+						</if>
+						<![CDATA[
+					  	 	  AND tri.bill_acc_no 		= bai.bill_acc_no
+					  	 	  AND bai.bill_acc_cust_no	= ci.cust_no
+					  	 	  AND pi.bill_acc_no 		= tri.bill_acc_no
+					  	 	  AND pi.tns_rqt_seq 		= tri.tns_rqt_seq
+						   ORDER BY tri.tns_rqt_dt DESC
+			     ) AA
+			    ) pagingtable
+			    WHERE currRow <= #{endRow}
+			)
+			WHERE currRow >= #{startRow}
+		]]>
+	</select>
+
+</mapper>
